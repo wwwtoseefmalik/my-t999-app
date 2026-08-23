@@ -18,24 +18,24 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Prepare Project and Fix Compatibility
+    - name: Prepare Project and Fix Dependencies
       run: |
-        # 1. Zip extract karein
+        # 1. Extract zip
         if [ -f "t999.zip" ]; then
           unzip -o t999.zip
         fi
 
-        # 2. Files root par shift karein
+        # 2. Move files from subfolder if needed
         BUILD_FILE=$(find . -name "settings.gradle*" -not -path "./settings.gradle*" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           PROJECT_DIR=$(dirname "$BUILD_FILE")
           cp -rn "$PROJECT_DIR"/* . || true
         fi
 
-        # 3. Signing config remove karein
+        # 3. Remove signing config
         find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-        # 4. Google Services Dummy generate karein
+        # 4. Generate Google Services json
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -46,18 +46,14 @@ jobs:
         EOF
         done
 
-        # 5. Fix Kotlin Compose Compiler Plugin Mismatch
-        find . -name "build.gradle*" -exec sed -i 's/kotlin("android") version "[0-9.]*"/kotlin("android") version "1.9.24"/g' {} + || true
-        find . -name "build.gradle*" -exec sed -i 's/id("org.jetbrains.kotlin.android") version "[0-9.]*"/id("org.jetbrains.kotlin.android") version "1.9.24"/g' {} + || true
-        find . -name "libs.versions.toml" -exec sed -i 's/kotlin = "[0-9.]*"/kotlin = "1.9.24"/g' {} + || true
+        # 5. Fix Kotlin Compose Compiler Plugin version alignment
+        find . -name "*.gradle*" -exec sed -i 's/1.9.24/2.0.21/g' {} + || true
+        find . -name "libs.versions.toml" -exec sed -i 's/1.9.24/2.0.21/g' {} + || true
 
-        # 6. Wrapper executable
-        if [ ! -f "./gradlew" ]; then
-          gradle wrapper
-        fi
-        chmod +x ./gradlew
+        # 6. Ensure wrapper execution permission
+        chmod +x ./gradlew || true
 
-    - name: Compile and Build APK
+    - name: Compile APK (Clean Build)
       run: |
         ./gradlew assembleDebug --no-daemon
 
