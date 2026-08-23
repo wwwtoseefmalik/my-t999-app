@@ -21,36 +21,34 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Final Fix & Build
+    - name: Clean Extract, Patch & Build
       env:
         JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
       run: |
-        # 1. Clean extraction
+        # 1. Fresh zip extraction
         rm -rf extracted_project
         mkdir -p extracted_project
         unzip -qo t999.zip -d extracted_project/
 
-        # 2. Locate root directory
-        BUILD_FILE=$(find extracted_project -name "settings.gradle*" -o -name "settings.gradle" | head -n 1)
+        # 2. Enter root directory
+        BUILD_FILE=$(find extracted_project -name "settings.gradle*" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           cd "$(dirname "$BUILD_FILE")"
         else
           cd extracted_project
         fi
 
-        # 3. Create .env file
+        # 3. Create .env
         echo "GEMINI_API_KEY=dummy_key_for_build" > .env
 
-        # 4. Remove release signing configurations
+        # 4. Remove signingConfig lines cleanly
         find . -name "*.gradle*" -exec sed -i '/signingConfig/d' {} + || true
-        find . -name "*.gradle*" -exec sed -i '/signingConfigs/d' {} + || true
 
-        # 5. Fix KSP syntax errors in build.gradle.kts files
-        find . -name "build.gradle.kts" -exec sed -i 's/ksp(libs\./ksp("/g' {} + || true
-        find . -name "build.gradle.kts" -exec sed -i 's/\.compiler)/-compiler")/' {} + || true
-        find . -name "build.gradle.kts" -exec sed -i 's/\.codegen)/-codegen")/' {} + || true
+        # 5. Remove composeOptions blocks
+        find . -name "*.gradle*" -exec sed -i '/composeOptions {/,/}/d' {} + || true
+        find . -name "*.gradle*" -exec sed -i '/kotlinCompilerExtensionVersion/d' {} + || true
 
-        # 6. Generate Google Services JSON
+        # 6. Generate exact google-services.json
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -61,10 +59,10 @@ jobs:
         EOF
         done
 
-        # 7. Run build
-        gradle assembleDebug --no-daemon
+        # 7. Clean Build execution
+        gradle clean assembleDebug --no-daemon --stacktrace
 
-    - name: Upload APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: my-app-apk
