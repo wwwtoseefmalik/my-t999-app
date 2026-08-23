@@ -9,35 +9,47 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-    - name: Extract Zip File
-      run: |
-        unzip -o t999.zip
-        # Agar files kisi andar wale folder mein extract hui hon to unhe bahar le aao
-        if [ ! -f "gradlew" ]; then
-          find . -maxdepth 2 -name "gradlew" -exec cp -r $(dirname {})/. . \;
-        fi
-
-    - name: Set up JDK 17
+    - name: Set up Java 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Remove signingConfig
+    - name: Unpack & Auto-Configure Android Project
       run: |
-        find . -name "build.gradle.kts" -exec sed -i '/signingConfig =/d' {} + || true
+        # 1. Zip file extract karein
+        if [ -f "t999.zip" ]; then
+          unzip -o t999.zip
+        fi
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x ./gradlew || true
+        # 2. Agar project kisi andar wale folder mein hai to sab root par le aao
+        BUILD_FILE=$(find . -name "settings.gradle*" -not -path "./settings.gradle*" | head -n 1)
+        if [ -n "$BUILD_FILE" ]; then
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "Moving files from $PROJECT_DIR to root"
+          cp -rn "$PROJECT_DIR"/* . || true
+        fi
 
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug --no-daemon
+        # 3. Signing config hatao (keystore missing error roknay ke liye)
+        find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-    - name: Upload APK
+        # 4. Agar gradlew file na ho to khud banao
+        if [ ! -f "./gradlew" ]; then
+          gradle wrapper
+        fi
+        chmod +x ./gradlew
+
+    - name: Compile and Build APK
+      run: |
+        ./gradlew assembleDebug --no-daemon --stacktrace
+
+    - name: Save and Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
+        name: my-app-apk
         path: "**/build/outputs/apk/debug/*.apk"
+        if-no-files-found: error
         
