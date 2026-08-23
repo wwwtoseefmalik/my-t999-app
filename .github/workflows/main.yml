@@ -57,7 +57,10 @@ jobs:
         sed -i 's/kotlin = "2.2.10"/kotlin = "2.0.21"/g' gradle/libs.versions.toml
         sed -i 's/googleDevtoolsKsp = "2.3.5"/googleDevtoolsKsp = "2.0.21-1.0.28"/g' gradle/libs.versions.toml
 
-        # 6. Global Gradle Build
+        # 6. Suppress Built-in Kotlin sourceSets Check (Exact Gradle Fix)
+        echo "android.disallowKotlinSourceSets=false" >> gradle.properties
+
+        # 7. Global Gradle Build
         gradle assembleDebug -x test -x testDebugUnitTest --no-daemon
 
     - name: Upload APK
