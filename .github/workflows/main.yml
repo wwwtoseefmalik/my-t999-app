@@ -21,15 +21,15 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Unpack, Prepare & Compile
+    - name: Complete Auto-Patch & Compile
       env:
         JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
       run: |
-        # 1. Zip extract karein
+        # 1. Unzip project
         mkdir -p extracted_project
         unzip -qo t999.zip -d extracted_project/
 
-        # 2. Project root directory mein jayein
+        # 2. Find working root
         BUILD_FILE=$(find extracted_project -name "settings.gradle*" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           cd "$(dirname "$BUILD_FILE")"
@@ -37,17 +37,11 @@ jobs:
           cd extracted_project
         fi
 
-        # 3. .env file generate karein
+        # 3. Environment & signing cleanup
         echo "GEMINI_API_KEY=dummy_key_for_build" > .env
-
-        # 4. signingConfig remove karein
         find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-        # 5. Fix Compose Compiler / Kotlin Mismatch
-        find . -name "*.gradle*" -exec sed -i '/composeOptions {/,/}/d' {} + || true
-        find . -name "*.gradle*" -exec sed -i 's/kotlinCompilerExtensionVersion.*/\/\/ removed/g' {} + || true
-
-        # 6. Dummy google-services.json generate karein
+        # 4. Generate Google Services JSON
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -58,7 +52,22 @@ jobs:
         EOF
         done
 
-        # 7. Clean Build chalayein
+        # 5. Fix Kotlin 2.0 Compose Plugin Configuration
+        # Top-level build.gradle.kts patch
+        if [ -f "build.gradle.kts" ]; then
+          sed -i '/plugins {/a \    alias(libs.plugins.compose.compiler) apply false' build.gradle.kts || true
+          sed -i '/plugins {/a \    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false' build.gradle.kts || true
+        fi
+
+        # App-level build.gradle.kts patch
+        if [ -f "app/build.gradle.kts" ]; then
+          sed -i '/plugins {/a \    alias(libs.plugins.compose.compiler)' app/build.gradle.kts || true
+          sed -i '/plugins {/a \    id("org.jetbrains.kotlin.plugin.compose")' app/build.gradle.kts || true
+          # Remove old composeOptions block
+          sed -i '/composeOptions {/,/}/d' app/build.gradle.kts || true
+        fi
+
+        # 6. Build APK
         gradle assembleDebug --no-daemon
 
     - name: Upload APK
