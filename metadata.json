@@ -1,0 +1,6 @@
+{
+  "name": "T999",
+  "description": "T999 - Premium Black & Neon Green Slot Social Gaming App with T999 Coins, TILL Payments, Wallet & Admin System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
