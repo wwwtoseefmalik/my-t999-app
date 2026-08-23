@@ -21,27 +21,35 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Complete Auto-Patch & Compile
+    - name: Ultimate All-in-One Fix & Build
       env:
         JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
       run: |
-        # 1. Unzip project
+        # 1. Clean extraction
+        rm -rf extracted_project
         mkdir -p extracted_project
         unzip -qo t999.zip -d extracted_project/
 
-        # 2. Project directory mein jayein
-        BUILD_FILE=$(find extracted_project -name "settings.gradle*" | head -n 1)
+        # 2. Locate exact root directory containing settings.gradle or build.gradle
+        BUILD_FILE=$(find extracted_project -name "settings.gradle*" -o -name "settings.gradle" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           cd "$(dirname "$BUILD_FILE")"
         else
           cd extracted_project
         fi
 
-        # 3. Environment & signing cleanup
+        # 3. Create .env file for Gemini API Key
         echo "GEMINI_API_KEY=dummy_key_for_build" > .env
-        find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-        # 4. Generate Google Services JSON
+        # 4. Remove all release signing configurations that break debug builds
+        find . -name "*.gradle*" -exec sed -i '/signingConfig/d' {} + || true
+        find . -name "*.gradle*" -exec sed -i '/signingConfigs/d' {} + || true
+
+        # 5. Remove duplicate or conflicting compose compiler extensions
+        find . -name "*.gradle*" -exec sed -i '/composeOptions {/,/}/d' {} + || true
+        find . -name "*.gradle*" -exec sed -i '/kotlinCompilerExtensionVersion/d' {} + || true
+
+        # 6. Generate precise Google Services JSON for package com.aistudio.t999.slots
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -52,20 +60,10 @@ jobs:
         EOF
         done
 
-        # 5. Correct Compose Plugin Injection
-        if [ -f "build.gradle.kts" ]; then
-          sed -i '/plugins {/a \    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false' build.gradle.kts || true
-        fi
+        # 7. Run clean debug assembly
+        gradle clean assembleDebug --no-daemon
 
-        if [ -f "app/build.gradle.kts" ]; then
-          sed -i '/plugins {/a \    id("org.jetbrains.kotlin.plugin.compose")' app/build.gradle.kts || true
-          sed -i '/composeOptions {/,/}/d' app/build.gradle.kts || true
-        fi
-
-        # 6. Build APK
-        gradle assembleDebug --no-daemon
-
-    - name: Upload APK
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: my-app-apk
