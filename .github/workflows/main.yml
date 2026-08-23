@@ -11,8 +11,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Extract Zip File
+      run: |
+        unzip -o t999.zip
+
     - name: Set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
