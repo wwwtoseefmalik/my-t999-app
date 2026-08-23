@@ -22,12 +22,14 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
 
     - name: Unpack, Prepare & Compile
+      env:
+        JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
       run: |
         # 1. Zip extract karein
         mkdir -p extracted_project
         unzip -qo t999.zip -d extracted_project/
 
-        # 2. settings.gradle wali directory mein jayein
+        # 2. Project root directory mein jayein
         BUILD_FILE=$(find extracted_project -name "settings.gradle*" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           cd "$(dirname "$BUILD_FILE")"
@@ -41,7 +43,11 @@ jobs:
         # 4. signingConfig remove karein
         find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-        # 5. Dummy google-services.json generate karein
+        # 5. Fix Compose Compiler / Kotlin Mismatch
+        find . -name "*.gradle*" -exec sed -i '/composeOptions {/,/}/d' {} + || true
+        find . -name "*.gradle*" -exec sed -i 's/kotlinCompilerExtensionVersion.*/\/\/ removed/g' {} + || true
+
+        # 6. Dummy google-services.json generate karein
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -52,7 +58,7 @@ jobs:
         EOF
         done
 
-        # 6. Global Gradle use karke direct build chalayein
+        # 7. Clean Build chalayein
         gradle assembleDebug --no-daemon
 
     - name: Upload APK
