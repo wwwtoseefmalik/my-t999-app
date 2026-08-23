@@ -50,10 +50,12 @@ jobs:
         }
         EOF
 
-        # 5. Fix SDK Mismatch & Core KTX Version
+        # 5. Fix SDK, Core KTX, and Stable Kotlin/KSP Versions
         sed -i 's/compileSdk { version = release(36) { minorApiLevel = 1 } }/compileSdk = 35/g' app/build.gradle.kts
         sed -i 's/targetSdk = 36/targetSdk = 35/g' app/build.gradle.kts
         sed -i 's/coreKtx = "1.18.0"/coreKtx = "1.15.0"/g' gradle/libs.versions.toml
+        sed -i 's/kotlin = "2.2.10"/kotlin = "2.0.21"/g' gradle/libs.versions.toml
+        sed -i 's/googleDevtoolsKsp = "2.3.5"/googleDevtoolsKsp = "2.0.21-1.0.28"/g' gradle/libs.versions.toml
 
         # 6. Global Gradle Build
         gradle assembleDebug -x test -x testDebugUnitTest --no-daemon
