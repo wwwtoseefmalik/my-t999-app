@@ -18,21 +18,24 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Unpack, Configure & Build
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Unpack, Prepare & Compile
       run: |
         # 1. Zip extract karein
         mkdir -p extracted_project
         unzip -qo t999.zip -d extracted_project/
 
-        # 2. Project directory dhoondein
-        if [ -f "extracted_project/gradlew" ]; then
-          cd extracted_project
+        # 2. settings.gradle wali directory mein jayein
+        BUILD_FILE=$(find extracted_project -name "settings.gradle*" | head -n 1)
+        if [ -n "$BUILD_FILE" ]; then
+          cd "$(dirname "$BUILD_FILE")"
         else
-          FOUND_DIR=$(find extracted_project -type f -name "gradlew" -exec dirname {} \; | head -n 1)
-          cd "$FOUND_DIR"
+          cd extracted_project
         fi
 
-        # 3. .env file banayein
+        # 3. .env file generate karein
         echo "GEMINI_API_KEY=dummy_key_for_build" > .env
 
         # 4. signingConfig remove karein
@@ -49,9 +52,8 @@ jobs:
         EOF
         done
 
-        # 6. Build run karein
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        # 6. Global Gradle use karke direct build chalayein
+        gradle assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
