@@ -18,14 +18,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Prepare Project and Fix Dependencies
+    - name: Prepare Project and Fix Compatibility
       run: |
-        # 1. Zip file extract karein
+        # 1. Zip extract karein
         if [ -f "t999.zip" ]; then
           unzip -o t999.zip
         fi
 
-        # 2. Root par files transfer karein
+        # 2. Files root par shift karein
         BUILD_FILE=$(find . -name "settings.gradle*" -not -path "./settings.gradle*" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           PROJECT_DIR=$(dirname "$BUILD_FILE")
@@ -35,7 +35,7 @@ jobs:
         # 3. Signing config remove karein
         find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-        # 4. Exact package name wali google-services.json generate karein
+        # 4. Google Services Dummy generate karein
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -46,15 +46,18 @@ jobs:
         EOF
         done
 
-        # 5. Gradle wrapper check
+        # 5. Fix Kotlin Compose Compiler Plugin Mismatch
+        find . -name "build.gradle*" -exec sed -i 's/kotlin("android") version "[0-9.]*"/kotlin("android") version "1.9.24"/g' {} + || true
+        find . -name "build.gradle*" -exec sed -i 's/id("org.jetbrains.kotlin.android") version "[0-9.]*"/id("org.jetbrains.kotlin.android") version "1.9.24"/g' {} + || true
+        find . -name "libs.versions.toml" -exec sed -i 's/kotlin = "[0-9.]*"/kotlin = "1.9.24"/g' {} + || true
+
+        # 6. Wrapper executable
         if [ ! -f "./gradlew" ]; then
           gradle wrapper
         fi
         chmod +x ./gradlew
 
-    - name: Compile APK (Headless Fix)
-      env:
-        JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true -Dkotlin.compiler.execution.strategy=in-process"
+    - name: Compile and Build APK
       run: |
         ./gradlew assembleDebug --no-daemon
 
