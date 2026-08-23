@@ -28,7 +28,7 @@ jobs:
       env:
         JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
       run: |
-        # 1. Clean Project Extraction
+        # 1. Clean Extraction
         rm -rf project_dir
         mkdir -p project_dir
         unzip -qo t999.zip -d project_dir/
@@ -50,11 +50,12 @@ jobs:
         }
         EOF
 
-        # 5. Fix SDK 36 preview mismatch to SDK 35 standard
+        # 5. Fix SDK Mismatch & Core KTX Version
         sed -i 's/compileSdk { version = release(36) { minorApiLevel = 1 } }/compileSdk = 35/g' app/build.gradle.kts
         sed -i 's/targetSdk = 36/targetSdk = 35/g' app/build.gradle.kts
+        sed -i 's/coreKtx = "1.18.0"/coreKtx = "1.15.0"/g' gradle/libs.versions.toml
 
-        # 6. Global Gradle use karke direct build assemble karein
+        # 6. Global Gradle Build
         gradle assembleDebug -x test -x testDebugUnitTest --no-daemon
 
     - name: Upload APK
