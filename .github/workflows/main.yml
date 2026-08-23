@@ -18,24 +18,27 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Prepare Project and Fix Dependencies
+    - name: Unpack, Configure & Build
       run: |
-        # 1. Extract zip
-        if [ -f "t999.zip" ]; then
-          unzip -o t999.zip
+        # 1. Zip extract karein
+        mkdir -p extracted_project
+        unzip -qo t999.zip -d extracted_project/
+
+        # 2. Project directory dhoondein
+        if [ -f "extracted_project/gradlew" ]; then
+          cd extracted_project
+        else
+          FOUND_DIR=$(find extracted_project -type f -name "gradlew" -exec dirname {} \; | head -n 1)
+          cd "$FOUND_DIR"
         fi
 
-        # 2. Move files from subfolder if needed
-        BUILD_FILE=$(find . -name "settings.gradle*" -not -path "./settings.gradle*" | head -n 1)
-        if [ -n "$BUILD_FILE" ]; then
-          PROJECT_DIR=$(dirname "$BUILD_FILE")
-          cp -rn "$PROJECT_DIR"/* . || true
-        fi
+        # 3. .env file banayein
+        echo "GEMINI_API_KEY=dummy_key_for_build" > .env
 
-        # 3. Remove signing config
+        # 4. signingConfig remove karein
         find . -name "*.gradle*" -exec sed -i '/signingConfig =/d' {} + || true
 
-        # 4. Generate Google Services json
+        # 5. Dummy google-services.json generate karein
         find . -type d -name "app" | while read -r app_dir; do
           cat << 'EOF' > "$app_dir/google-services.json"
         {
@@ -46,18 +49,11 @@ jobs:
         EOF
         done
 
-        # 5. Fix Kotlin Compose Compiler Plugin version alignment
-        find . -name "*.gradle*" -exec sed -i 's/1.9.24/2.0.21/g' {} + || true
-        find . -name "libs.versions.toml" -exec sed -i 's/1.9.24/2.0.21/g' {} + || true
-
-        # 6. Ensure wrapper execution permission
-        chmod +x ./gradlew || true
-
-    - name: Compile APK (Clean Build)
-      run: |
+        # 6. Build run karein
+        chmod +x gradlew
         ./gradlew assembleDebug --no-daemon
 
-    - name: Save APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: my-app-apk
