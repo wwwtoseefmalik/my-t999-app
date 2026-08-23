@@ -21,6 +21,9 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
+    - name: Setup Gradle System
+      uses: gradle/actions/setup-gradle@v3
+
     - name: Unpack, Patch & Build APK
       env:
         JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
@@ -31,14 +34,14 @@ jobs:
         unzip -qo t999.zip -d project_dir/
         cd project_dir
 
-        # 2. Setup Dummy .env File
+        # 2. Setup Dummy .env Files
         echo "GEMINI_API_KEY=dummy_build_key" > .env
         echo "GEMINI_API_KEY=dummy_build_key" > .env.example
 
         # 3. Create dummy debug.keystore
         keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-        # 4. Generate exact google-services.json for package com.aistudio.t999.slots
+        # 4. Generate Google Services JSON
         cat << 'EOF' > app/google-services.json
         {
           "project_info": { "project_number": "1234567890", "project_id": "t999-app", "storage_bucket": "t999-app.appspot.com" },
@@ -51,9 +54,8 @@ jobs:
         sed -i 's/compileSdk { version = release(36) { minorApiLevel = 1 } }/compileSdk = 35/g' app/build.gradle.kts
         sed -i 's/targetSdk = 36/targetSdk = 35/g' app/build.gradle.kts
 
-        # 6. Execute direct APK compile (Skipping unit tests to prevent test crashes)
-        chmod +x ./gradlew || true
-        ./gradlew assembleDebug -x test -x testDebugUnitTest --no-daemon
+        # 6. Global Gradle use karke direct build assemble karein
+        gradle assembleDebug -x test -x testDebugUnitTest --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
