@@ -29,7 +29,7 @@ jobs:
         mkdir -p extracted_project
         unzip -qo t999.zip -d extracted_project/
 
-        # 2. Find working root
+        # 2. Project directory mein jayein
         BUILD_FILE=$(find extracted_project -name "settings.gradle*" | head -n 1)
         if [ -n "$BUILD_FILE" ]; then
           cd "$(dirname "$BUILD_FILE")"
@@ -52,18 +52,13 @@ jobs:
         EOF
         done
 
-        # 5. Fix Kotlin 2.0 Compose Plugin Configuration
-        # Top-level build.gradle.kts patch
+        # 5. Correct Compose Plugin Injection
         if [ -f "build.gradle.kts" ]; then
-          sed -i '/plugins {/a \    alias(libs.plugins.compose.compiler) apply false' build.gradle.kts || true
           sed -i '/plugins {/a \    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false' build.gradle.kts || true
         fi
 
-        # App-level build.gradle.kts patch
         if [ -f "app/build.gradle.kts" ]; then
-          sed -i '/plugins {/a \    alias(libs.plugins.compose.compiler)' app/build.gradle.kts || true
           sed -i '/plugins {/a \    id("org.jetbrains.kotlin.plugin.compose")' app/build.gradle.kts || true
-          # Remove old composeOptions block
           sed -i '/composeOptions {/,/}/d' app/build.gradle.kts || true
         fi
 
